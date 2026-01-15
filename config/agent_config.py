@@ -11,7 +11,11 @@ from typing import Dict, Any, List, Optional
 from pathlib import Path
 from dataclasses import dataclass, asdict
 
-from ..agents.base.agent_interface import AgentType
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
+from agents.base.agent_interface import AgentType
 
 
 @dataclass

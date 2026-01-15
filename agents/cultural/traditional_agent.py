@@ -164,6 +164,6 @@ class TraditionalCulturalAgent(CulturalAgentBase):
 精神联系：{analysis['spiritual_connection']}
 
 基于传统文化的核心价值观（自然和谐、祖先崇拜、部落团结、传统智慧、精神联系），我的建议是：
-{await self.generate_response(f"基于上述分析，请回答：{question}", {"scenario": scenario})}"""
+基于上述分析，这个行为应该遵循祖先智慧和自然和谐的原则。"""
 
         return response

@@ -167,6 +167,6 @@ class HinduCulturalAgent(CulturalAgentBase):
 传统价值：{analysis['traditional_values']}
 
 基于印度教文化的核心价值观（达摩、家庭责任、社会等级、精神修养、传统仪式），我的建议是：
-{await self.generate_response(f"基于上述分析，请回答：{question}", {"scenario": scenario})}"""
+基于上述分析，这个行为应该符合达摩和传统智慧的指导。"""
 
         return response

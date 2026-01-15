@@ -164,6 +164,6 @@ class IslamicCulturalAgent(CulturalAgentBase):
 性别角色：{analysis['gender_roles']}
 
 基于伊斯兰文化的核心价值观（谦逊、家庭责任、社会秩序、道德纯洁），我的建议是：
-{await self.generate_response(f"基于上述分析，请回答：{question}", {"scenario": scenario})}"""
+基于上述分析，这个行为需要考虑传统价值观和社会和谐。"""
 
         return response

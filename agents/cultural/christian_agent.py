@@ -143,6 +143,6 @@ class ChristianCulturalAgent(CulturalAgentBase):
 社会适当性：{analysis['social_appropriateness']}
 
 基于基督教文化的核心价值观（个人自由、权利、平等、责任），我的建议是：
-{await self.generate_response(f"基于上述分析，请回答：{question}", {"scenario": scenario})}"""
+基于上述分析，这个行为体现了个人选择和文化尊重的平衡。"""
 
         return response

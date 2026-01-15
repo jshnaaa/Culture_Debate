@@ -164,6 +164,6 @@ class BuddhistCulturalAgent(CulturalAgentBase):
 和谐性：{analysis['harmony']}
 
 基于佛教文化的核心价值观（内心平静、慈悲、简朴、尊重、和谐），我的建议是：
-{await self.generate_response(f"基于上述分析，请回答：{question}", {"scenario": scenario})}"""
+基于上述分析，这个行为应该追求内心和谐与外在平衡。"""
 
         return response
