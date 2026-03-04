@@ -1,0 +1,19 @@
+{
+  "_comment": "Copy this file to model_paths.json and update with your local model paths",
+  "cultural_agent": "/path/to/llama3.1-8b",
+  "conflict_analyzer": "/path/to/qwen2.5-7b",
+  "mediator": "/path/to/qwen2.5-14b",
+
+  "_notes": {
+    "cultural_agent": "Llama 3.1 8B Instruct - Used for 5 cultural perspective agents",
+    "conflict_analyzer": "Qwen 2.5 7B - Used for value extraction and conflict analysis",
+    "mediator": "Qwen 2.5 14B - Used for mediation and resolution generation"
+  },
+
+  "_hardware_requirements": {
+    "cultural_agent_vram": "~16GB (bfloat16)",
+    "conflict_analyzer_vram": "~14GB (bfloat16)",
+    "mediator_vram": "~28GB (bfloat16)",
+    "recommended_gpu": "2x48GB or 1x48GB (sequential loading)"
+  }
+}
