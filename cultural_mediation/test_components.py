@@ -145,44 +145,55 @@ def test_model_paths():
         return False
 
 
-def test_dual_gpu_manager():
-    """Test dual-GPU model manager (WARNING: Loads models, takes time)"""
+def test_unified_model_manager():
+    """Test unified model manager (WARNING: Loads model, takes time)"""
     print("\n" + "=" * 80)
-    print("TEST 4: Dual-GPU Manager (Model Loading)")
+    print("TEST 4: Unified Model Manager (Model Loading)")
     print("=" * 80)
-    print("⚠️  This test will load both models (~30 seconds)")
+    print("⚠️  This test will load model (~30 seconds)")
 
     response = input("Continue? (y/n): ")
     if response.lower() != 'y':
         print("Skipped.")
         return None
 
+    # Ask which model to test
+    print("\nWhich model to test?")
+    print("  1. llama (Llama3.1-8B)")
+    print("  2. qwen (Qwen3-8B)")
+    model_choice = input("Choice (1/2, default=1): ").strip()
+    model_name = "qwen" if model_choice == "2" else "llama"
+
     try:
-        from utils.dual_gpu_manager import DualGPUModelManager
+        from utils.unified_model_manager import UnifiedModelManager
 
-        # Initialize manager (loads models)
-        print("\nInitializing manager...")
-        manager = DualGPUModelManager()
+        # Initialize manager (loads model)
+        print(f"\nInitializing manager with {model_name}...")
+        manager = UnifiedModelManager(model_name=model_name)
 
-        # Test cultural agent generation
-        print("\n✓ Testing Cultural Agent (GPU0)...")
-        test_prompts = ["What is cultural alignment?"]
-        responses = manager.generate_cultural_responses(
+        # Test single generation
+        print("\n✓ Testing single generation...")
+        test_prompt = "What is cultural alignment?"
+        response = manager.generate(
+            test_prompt,
+            max_new_tokens=50,
+            temperature=0.0
+        )
+        print(f"  Response: {response[:100]}...")
+
+        # Test batch generation
+        print("\n✓ Testing batch generation...")
+        test_prompts = [
+            "What is cultural alignment?",
+            "How do values differ?"
+        ]
+        responses = manager.batch_generate(
             test_prompts,
             max_new_tokens=50,
             temperature=0.0
         )
-        print(f"  Response: {responses[0][:100]}...")
-
-        # Test Qwen generation
-        print("\n✓ Testing Qwen (GPU1)...")
-        qwen_prompt = "Explain conflict in one sentence."
-        qwen_response = manager.generate_with_qwen(
-            qwen_prompt,
-            max_new_tokens=50,
-            temperature=0.0
-        )
-        print(f"  Response: {qwen_response[:100]}...")
+        print(f"  Response 1: {responses[0][:50]}...")
+        print(f"  Response 2: {responses[1][:50]}...")
 
         # Print memory usage
         manager.print_memory_usage()
@@ -256,8 +267,8 @@ def main():
     # Test 3: Model Paths
     results['model_paths'] = test_model_paths()
 
-    # Test 4: Dual-GPU Manager (optional, slow)
-    results['dual_gpu_manager'] = test_dual_gpu_manager()
+    # Test 4: Unified Model Manager (optional, slow)
+    results['unified_model_manager'] = test_unified_model_manager()
 
     # Test 5: Value Extractor
     results['value_extractor'] = test_value_extractor()

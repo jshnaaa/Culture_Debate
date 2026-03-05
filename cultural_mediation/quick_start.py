@@ -1,8 +1,9 @@
 """
-Quick Start Example: Cultural Conflict Mediation System (Dual-GPU Version)
-Demonstrates the complete pipeline on a single NORMAD sample
+Quick Start Example: Cultural Conflict Mediation System (Unified Model)
+All agents share the same model (Llama3.1-8B or Qwen3-8B)
 """
 
+import argparse
 import json
 import numpy as np
 from pathlib import Path
@@ -11,25 +12,75 @@ import sys
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent))
 
-from utils.dual_gpu_manager import DualGPUModelManager
+from utils.unified_model_manager import UnifiedModelManager
 from utils.weight_learner import CountryWeightLearner
-from utils.value_extractor import batch_extract_value_tags, compute_value_distance
 from utils.normad_loader import NORMADLoader
 from sentence_transformers import SentenceTransformer
 
 
+def parse_agent_answer(response: str) -> str:
+    """
+    Parse agent response to extract answer (1/2/3)
+
+    Args:
+        response: Agent's generated response
+
+    Returns:
+        "1", "2", or "3"
+    """
+    # Look for explicit answer format
+    response_lower = response.lower()
+
+    # Check for "answer: 1/2/3" pattern
+    if "answer:" in response_lower:
+        answer_part = response_lower.split("answer:")[-1].strip()
+        if "1" in answer_part[:10]:
+            return "1"
+        elif "2" in answer_part[:10]:
+            return "2"
+        elif "3" in answer_part[:10]:
+            return "3"
+
+    # Check for first occurrence of 1/2/3
+    for char in response[:100]:
+        if char in ["1", "2", "3"]:
+            return char
+
+    # Default to neutral
+    return "3"
+
+
 def main():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(
+        description="Cultural Conflict Mediation System - Quick Start"
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="llama",
+        choices=["llama", "qwen"],
+        help="Model to use: llama (Llama3.1-8B) or qwen (Qwen3-8B)"
+    )
+    parser.add_argument(
+        "--sample_idx",
+        type=int,
+        default=0,
+        help="Index of sample to test (default: 0)"
+    )
+    args = parser.parse_args()
+
     print("=" * 80)
-    print("Cultural Conflict Mediation System - Quick Start (Dual-GPU)")
+    print("Cultural Conflict Mediation System - Quick Start")
+    print(f"Model: {args.model.upper()}")
     print("=" * 80)
 
     # ============================================================================
-    # Step 1: Load Configuration and Models
+    # Step 1: Initialize Model Manager
     # ============================================================================
-    print("\n[Step 1] Initializing dual-GPU model manager...")
+    print("\n[Step 1] Initializing model manager...")
 
-    # Initialize dual-GPU manager (loads both models)
-    model_mgr = DualGPUModelManager()
+    model_mgr = UnifiedModelManager(model_name=args.model)
 
     # Load weight learner
     weight_path = Path(__file__).parent / "data" / "country_weights_init.json"
@@ -41,17 +92,17 @@ def main():
     # ============================================================================
     print("\n[Step 2] Loading NORMAD dataset...")
 
-    # Load dataset
     dataset_path = "/root/autodl-fs/normad_merge_gen.json"
     loader = NORMADLoader(dataset_path)
 
-    # Get first sample for testing
-    sample = loader.get_sample(0)
+    # Get sample
+    sample = loader.get_sample(args.sample_idx)
     sample_dict = sample.to_dict()
 
-    print(f"✓ Loaded sample from country: {sample.country}")
-    print(f"✓ Gold label: {sample.gold_label} (output: {sample.output})")
-    print(f"✓ Story preview: {sample.story[:100]}...")
+    print(f"✓ Testing sample #{args.sample_idx}")
+    print(f"✓ Country: {sample.country}")
+    print(f"✓ Gold label: {sample.gold_label} (1=yes, 2=no, 3=neutral)")
+    print(f"✓ Story: {sample.story[:100]}...")
 
     # ============================================================================
     # Step 3: Get Country Weights
@@ -59,14 +110,13 @@ def main():
     print("\n[Step 3] Getting country weights...")
 
     country_weights = weight_learner.get_country_weight(sample.country)
-    print(f"✓ Country: {sample.country}")
     print(f"✓ Weights: {country_weights.tolist()}")
     print(f"  [Autonomy, Order&Security, Tradition, Care&Universalism, Achievement&Power]")
 
     # ============================================================================
-    # Step 4: Generate Cultural Agent Responses (GPU0)
+    # Step 4: Generate Cultural Agent Responses
     # ============================================================================
-    print("\n[Step 4] Generating cultural agent responses (GPU0: Llama3.1-8B)...")
+    print(f"\n[Step 4] Generating cultural agent responses ({args.model})...")
 
     dimensions = ["Autonomy", "Order & Security", "Tradition",
                  "Care & Universalism", "Achievement & Power"]
@@ -94,15 +144,20 @@ Rule-of-Thumb:
 Scenario:
 {sample_dict['story']}
 
-Based on your value priorities (especially {dimension}), is the action appropriate?
-Answer: [Yes/No/Neither]
-Explanation (≤3 sentences, focusing on {dimension}):"""
+Based on your value priorities (especially {dimension}), is the action socially acceptable?
+Answer with one of the following:
+1 - yes (socially acceptable)
+2 - no (not socially acceptable)
+3 - neutral (depends on context)
+
+Provide your answer and a brief explanation (≤3 sentences, focusing on {dimension}):
+Answer:"""
 
         prompts.append(prompt)
 
     # Generate all 5 responses in batch
     print("  Generating batch of 5 agent responses...")
-    agent_responses_raw = model_mgr.generate_cultural_responses(
+    agent_responses_raw = model_mgr.batch_generate(
         prompts,
         max_new_tokens=200,
         temperature=0.0
@@ -111,13 +166,7 @@ Explanation (≤3 sentences, focusing on {dimension}):"""
     # Parse answers
     agent_responses = []
     for i, (dimension, response_raw) in enumerate(zip(dimensions, agent_responses_raw)):
-        # Parse answer from response
-        if "Yes" in response_raw[:100]:
-            answer = "Yes"
-        elif "No" in response_raw[:100]:
-            answer = "No"
-        else:
-            answer = "Neither"
+        answer = parse_agent_answer(response_raw)
 
         agent_responses.append({
             "dimension": dimension,
@@ -126,122 +175,30 @@ Explanation (≤3 sentences, focusing on {dimension}):"""
             "explanation": response_raw
         })
 
-        print(f"  Agent {i+1} ({dimension}, w={country_weights[i].item():.2f}): {answer}")
+        answer_text = {"1": "yes", "2": "no", "3": "neutral"}[answer]
+        print(f"  Agent {i+1} ({dimension}, w={country_weights[i].item():.2f}): "
+              f"{answer} ({answer_text})")
 
     # ============================================================================
-    # Step 5: Extract Value Tags (GPU1)
+    # Step 5: Compute Conflict Score (Simplified)
     # ============================================================================
-    print("\n[Step 5] Extracting value tags (GPU1: Qwen2.5-14B)...")
+    print("\n[Step 5] Analyzing conflict...")
 
-    explanations = [resp["explanation"] for resp in agent_responses]
-    value_tags_list = batch_extract_value_tags(explanations, model_mgr)
+    # Simple conflict: check answer variance
+    answers = [resp["answer"] for resp in agent_responses]
+    unique_answers = set(answers)
+    conflict_score = (len(unique_answers) - 1) / 2.0  # 0 if all same, 1 if all different
 
-    for i, tags in enumerate(value_tags_list):
-        print(f"  Agent {i+1} value emphasis:")
-        for dim, score in tags.items():
-            print(f"    {dim}: {score:.2f}")
-
-    # ============================================================================
-    # Step 6: Analyze Conflict (GPU1)
-    # ============================================================================
-    print("\n[Step 6] Analyzing conflict (GPU1: Qwen2.5-14B)...")
-
-    # Load embedding model
-    print("  Loading sentence transformer for embeddings...")
-    embed_model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
-    embeddings = embed_model.encode(explanations)
-
-    # Compute pairwise conflicts
-    conflicts = []
-    for i in range(5):
-        for j in range(i+1, 5):
-            # Semantic distance
-            sem_dist = 1 - (embeddings[i] @ embeddings[j]) / \
-                      (np.linalg.norm(embeddings[i]) * np.linalg.norm(embeddings[j]))
-
-            # Value distance
-            val_dist = compute_value_distance(value_tags_list[i], value_tags_list[j])
-
-            # Polarity distance
-            polarity_map = {"Yes": 1, "No": -1, "Neither": 0}
-            pol_i = polarity_map[agent_responses[i]["answer"]]
-            pol_j = polarity_map[agent_responses[j]["answer"]]
-            pol_dist = abs(pol_i - pol_j) / 2
-
-            # Combined conflict (α=0.4, β=0.4, γ=0.2)
-            conflict_ij = 0.4 * sem_dist + 0.4 * val_dist + 0.2 * pol_dist
-            conflicts.append(conflict_ij)
-
-    overall_conflict = np.mean(conflicts)
-    print(f"✓ Overall conflict score: {overall_conflict:.3f}")
-    print(f"  (Threshold for mediation: 0.6)")
+    print(f"✓ Answer distribution: {dict((a, answers.count(a)) for a in unique_answers)}")
+    print(f"✓ Conflict score: {conflict_score:.3f} (0=consensus, 1=max disagreement)")
 
     # ============================================================================
-    # Step 7: Mediation (if needed) (GPU1)
+    # Step 6: Final Decision (Weighted Voting)
     # ============================================================================
-    threshold = 0.6
-    if overall_conflict > threshold:
-        print(f"\n[Step 7] Conflict exceeds threshold, initiating mediation (GPU1: Qwen2.5-14B)...")
-
-        # Build mediation prompt
-        responses_text = "\n".join([
-            f"Agent {i+1} ({resp['dimension']}, weight={resp['weight']:.2f}): "
-            f"{resp['answer']} - {resp['explanation'][:150]}..."
-            for i, resp in enumerate(agent_responses)
-        ])
-
-        mediation_prompt = f"""You are a neutral mediator facilitating cultural dialogue.
-
-Current Situation:
-{responses_text}
-
-Conflict Analysis:
-- Overall conflict score: {overall_conflict:.2f}
-- Main disagreements: Different emphasis on cultural values
-
-Your Task:
-1. Identify common ground across all perspectives
-2. Propose a balanced resolution respecting all value priorities
-3. Suggest specific adjustments for each agent (≤2 sentences each)
-
-Constraints:
-- Do NOT favor any single cultural perspective
-- Preserve diversity while reducing unnecessary conflict
-- Focus on bridging core value differences
-
-Output Format:
-Common Ground: ...
-Proposed Resolution: ...
-Agent Adjustments:
-- Agent 1: ...
-- Agent 2: ...
-- Agent 3: ...
-- Agent 4: ...
-- Agent 5: ..."""
-
-        print("  Generating mediation...")
-        mediation = model_mgr.generate_with_qwen(
-            mediation_prompt,
-            max_new_tokens=500,
-            temperature=0.0
-        )
-
-        print(f"✓ Mediation generated")
-        print(f"\nMediation Output:")
-        print("-" * 80)
-        print(mediation[:500] + "..." if len(mediation) > 500 else mediation)
-        print("-" * 80)
-
-    else:
-        print(f"\n[Step 7] Conflict below threshold ({threshold:.2f}), no mediation needed")
-
-    # ============================================================================
-    # Step 8: Final Decision
-    # ============================================================================
-    print("\n[Step 8] Computing final decision...")
+    print("\n[Step 6] Computing final decision...")
 
     # Weighted voting
-    votes = {"Yes": 0.0, "No": 0.0, "Neither": 0.0}
+    votes = {"1": 0.0, "2": 0.0, "3": 0.0}
     for i, resp in enumerate(agent_responses):
         votes[resp["answer"]] += country_weights[i].item()
 
@@ -249,24 +206,26 @@ Agent Adjustments:
 
     print(f"✓ Vote distribution:")
     for answer, weight in votes.items():
-        print(f"  {answer}: {weight:.3f}")
+        answer_text = {"1": "yes", "2": "no", "3": "neutral"}[answer]
+        print(f"  {answer} ({answer_text}): {weight:.3f}")
 
-    print(f"\n✓ Final answer: {final_answer}")
-    print(f"✓ Gold label: {sample.gold_label}")
+    print(f"\n✓ Final answer: {final_answer} ({{'1': 'yes', '2': 'no', '3': 'neutral'}}[final_answer]})")
+    print(f"✓ Gold label: {sample.gold_label} ({{'1': 'yes', '2': 'no', '3': 'neutral'}}[sample.gold_label]})")
 
     # Check correctness
-    correct = final_answer.lower() == sample.gold_label.lower()
+    correct = final_answer == sample.gold_label
     print(f"✓ Prediction: {'✓ CORRECT' if correct else '✗ INCORRECT'}")
 
     # ============================================================================
-    # Step 9: Summary
+    # Step 7: Summary
     # ============================================================================
     print("\n" + "=" * 80)
     print("Summary")
     print("=" * 80)
+    print(f"Model: {args.model.upper()}")
+    print(f"Sample: #{args.sample_idx}")
     print(f"Country: {sample.country}")
-    print(f"Conflict Score: {overall_conflict:.3f}")
-    print(f"Mediation: {'Yes' if overall_conflict > threshold else 'No'}")
+    print(f"Conflict Score: {conflict_score:.3f}")
     print(f"Final Answer: {final_answer}")
     print(f"Gold Label: {sample.gold_label}")
     print(f"Accuracy: {'✓ Correct' if correct else '✗ Incorrect'}")
@@ -281,6 +240,9 @@ Agent Adjustments:
     print("✓ Quick start completed successfully!")
     print("=" * 80)
 
+    return correct
+
 
 if __name__ == "__main__":
-    main()
+    success = main()
+    sys.exit(0 if success else 1)

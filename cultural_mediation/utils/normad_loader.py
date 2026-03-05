@@ -23,8 +23,8 @@ class NORMADSample:
         self.rule_of_thumb = self._extract_rule_of_thumb()
         self.story = self._extract_story()
 
-        # Convert output to label
-        self.gold_label = self._convert_output_to_label()
+        # Gold label is output directly (1/2/3)
+        self.gold_label = self.output
 
     def _extract_background(self) -> str:
         """Extract Background section from instruction"""
@@ -50,14 +50,6 @@ class NORMADSample:
             return match.group(1).strip()
         return ""
 
-    def _convert_output_to_label(self) -> str:
-        """Convert output (1/2/3) to label (yes/no/neutral)"""
-        mapping = {
-            "1": "yes",
-            "2": "no",
-            "3": "neutral"
-        }
-        return mapping.get(self.output, "neutral")
 
     def to_dict(self) -> Dict:
         """Convert to dictionary format for processing"""
@@ -73,7 +65,7 @@ class NORMADSample:
 
     def __repr__(self):
         return (f"NORMADSample(country={self.country}, "
-                f"gold_label={self.gold_label}, "
+                f"gold_label={self.gold_label} (1=yes/2=no/3=neutral), "
                 f"story_preview={self.story[:50]}...)")
 
 
@@ -128,8 +120,8 @@ class NORMADLoader:
         return sorted(list(set(s.country for s in self.samples)))
 
     def get_label_distribution(self) -> Dict[str, int]:
-        """Get distribution of labels"""
-        dist = {"yes": 0, "no": 0, "neutral": 0}
+        """Get distribution of labels (1/2/3)"""
+        dist = {"1": 0, "2": 0, "3": 0}
         for sample in self.samples:
             dist[sample.gold_label] += 1
         return dist
