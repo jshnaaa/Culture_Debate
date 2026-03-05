@@ -65,21 +65,21 @@ def parse_value_tags(response_text: str) -> Dict[str, float]:
     }
 
 
-def extract_value_tags(agent_response: str, model_manager) -> Dict[str, float]:
+def extract_value_tags(agent_response: str, dual_gpu_manager) -> Dict[str, float]:
     """
-    Extract value tags from an agent response using LLM
+    Extract value tags from an agent response using LLM (Qwen2.5-14B on GPU1)
 
     Args:
         agent_response: The cultural agent's response text
-        model_manager: ModelManager instance with conflict_analyzer loaded
+        dual_gpu_manager: DualGPUModelManager instance
 
     Returns:
         Dictionary with value dimensions and scores
     """
     prompt = VALUE_EXTRACTION_PROMPT.format(agent_response=agent_response)
 
-    # Generate extraction
-    extraction_text = model_manager.generate(
+    # Generate extraction using Qwen on GPU1
+    extraction_text = dual_gpu_manager.generate_with_qwen(
         prompt,
         max_new_tokens=150,
         temperature=0.0
@@ -91,13 +91,13 @@ def extract_value_tags(agent_response: str, model_manager) -> Dict[str, float]:
     return tags
 
 
-def batch_extract_value_tags(agent_responses: List[str], model_manager) -> List[Dict[str, float]]:
+def batch_extract_value_tags(agent_responses: List[str], dual_gpu_manager) -> List[Dict[str, float]]:
     """
     Extract value tags from multiple agent responses in batch
 
     Args:
         agent_responses: List of agent response texts
-        model_manager: ModelManager instance with conflict_analyzer loaded
+        dual_gpu_manager: DualGPUModelManager instance
 
     Returns:
         List of value tag dictionaries
@@ -107,8 +107,8 @@ def batch_extract_value_tags(agent_responses: List[str], model_manager) -> List[
         for resp in agent_responses
     ]
 
-    # Batch generate
-    extraction_texts = model_manager.batch_generate(
+    # Batch generate using Qwen on GPU1
+    extraction_texts = dual_gpu_manager.batch_generate_with_qwen(
         prompts,
         max_new_tokens=150,
         temperature=0.0

@@ -1,0 +1,31 @@
+{
+  "_comment": "Model paths configuration for dual-GPU setup",
+
+  "cultural_agent": {
+    "path": "/root/autodl-tmp/CultureMoE/Culture_Alignment/Meta-Llama-3.1-8B-Instruct",
+    "device": "cuda:0",
+    "description": "Llama 3.1 8B Instruct - Used for 5 cultural perspective agents",
+    "vram": "~16GB (bfloat16)"
+  },
+
+  "qwen_unified": {
+    "path": "/root/autodl-tmp/CultureMoE/Culture_Alignment/Qwen2.5-14B-Instruct",
+    "device": "cuda:1",
+    "description": "Qwen 2.5 14B - Used for value extraction, conflict analysis, and mediation",
+    "vram": "~28GB (bfloat16)"
+  },
+
+  "_architecture": "Pipeline Parallelism",
+  "_note": "Two models are loaded simultaneously on different GPUs for maximum efficiency",
+
+  "_hardware_requirements": {
+    "gpu0": "48GB VRAM (Llama 3.1 8B)",
+    "gpu1": "48GB VRAM (Qwen 2.5 14B)",
+    "total_vram": "~44GB used out of 96GB available"
+  },
+
+  "_data_paths": {
+    "normad_dataset": "/root/autodl-fs/normad_merge_gen.json",
+    "country_weights": "data/country_weights_init.json"
+  }
+}

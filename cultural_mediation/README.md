@@ -27,9 +27,9 @@ Iterative Refinement (max 3 rounds)
 
 ## 硬件要求
 
-- **GPU**: 2×48GB (或单卡48GB)
-- **模型**: Llama3.1-8B, Qwen2.5-7B, Qwen2.5-14B (本地权重)
-- **内存**: 按需加载，峰值28GB VRAM
+- **GPU**: 2×48GB (双卡并行，Pipeline Parallelism)
+- **模型**: Llama3.1-8B (GPU0), Qwen2.5-14B (GPU1)
+- **内存**: GPU0: ~16GB, GPU1: ~28GB, 总计~44GB VRAM
 
 ## 快速开始
 
@@ -43,12 +43,17 @@ pip install torch transformers sentence-transformers numpy pandas jsonlines matp
 
 ### 2. 配置模型路径
 
-编辑 `config/model_paths.json`:
+模型路径已配置在 `config/model_paths.json`:
 ```json
 {
-  "cultural_agent": "/path/to/llama3.1-8b",
-  "conflict_analyzer": "/path/to/qwen2.5-7b",
-  "mediator": "/path/to/qwen2.5-14b"
+  "cultural_agent": {
+    "path": "/root/autodl-tmp/CultureMoE/Culture_Alignment/Meta-Llama-3.1-8B-Instruct",
+    "device": "cuda:0"
+  },
+  "qwen_unified": {
+    "path": "/root/autodl-tmp/CultureMoE/Culture_Alignment/Qwen2.5-14B-Instruct",
+    "device": "cuda:1"
+  }
 }
 ```
 
@@ -71,48 +76,38 @@ print(learner.get_country_weight('egypt'))
 ### 4. 运行单个样本
 
 ```python
-from agents.cultural_agent import CulturalAgent
-from agents.conflict_analyzer import ConflictAnalyzer
-from agents.mediator_agent import MediatorAgent
-from utils.model_manager import ModelManager
-import json
+from utils.dual_gpu_manager import DualGPUModelManager
+from utils.normad_loader import NORMADLoader
+from utils.weight_learner import CountryWeightLearner
 
-# 初始化模型管理器
-model_paths = json.load(open("config/model_paths.json"))
-model_mgr = ModelManager(model_paths, device="cuda:0")
+# 初始化双卡管理器（自动加载两个模型）
+model_mgr = DualGPUModelManager()
 
-# 加载NORMAD样本
-sample = {
-    "Country": "egypt",
-    "Background": "...",
-    "Rule-of-Thumb": "...",
-    "Story": "...",
-    "Gold Label": "yes"
-}
+# 加载NORMAD数据集
+loader = NORMADLoader("/root/autodl-fs/normad_merge_gen.json")
+sample = loader.get_sample(0)
 
-# 初始化agents
-cultural_agents = [CulturalAgent(model_mgr, dimension=i) for i in range(5)]
-conflict_analyzer = ConflictAnalyzer(model_mgr)
-mediator = MediatorAgent(model_mgr)
+# 加载权重
+learner = CountryWeightLearner(init_weights_path="data/country_weights_init.json")
+country_weights = learner.get_country_weight(sample.country)
 
-# 生成初始回答
-model_mgr.load_model("cultural_agent")
-responses = []
-for i, agent in enumerate(cultural_agents):
-    weight = learner.get_country_weight(sample['Country'])[i]
-    response = agent.generate(sample, weight)
-    responses.append(response)
+# 生成5个cultural agent的回答（GPU0，batch生成）
+prompts = [build_prompt(sample, country_weights[i], dimension=i) for i in range(5)]
+responses = model_mgr.generate_cultural_responses(prompts)
 
-# 冲突分析
-model_mgr.load_model("conflict_analyzer")
-conflict_report = conflict_analyzer.analyze(responses)
-print(f"Conflict score: {conflict_report['conflict_score']:.3f}")
+# 提取价值标签（GPU1）
+from utils.value_extractor import batch_extract_value_tags
+value_tags = batch_extract_value_tags(responses, model_mgr)
 
-# 如果冲突高,进行调解
-if conflict_report['conflict_score'] > 0.6:
-    model_mgr.load_model("mediator")
-    mediation = mediator.generate(responses, conflict_report)
-    print(f"Mediation suggestion: {mediation['proposed_resolution']}")
+# 冲突分析（GPU1）
+conflict_score = compute_conflict(responses, value_tags)
+print(f"Conflict score: {conflict_score:.3f}")
+
+# 如果冲突高，进行调解（GPU1）
+if conflict_score > 0.6:
+    mediation_prompt = build_mediation_prompt(responses, conflict_score)
+    mediation = model_mgr.generate_with_qwen(mediation_prompt)
+    print(f"Mediation: {mediation}")
 ```
 
 ## 权重学习
