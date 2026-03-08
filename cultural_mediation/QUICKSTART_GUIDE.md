@@ -5,8 +5,7 @@
 ### Step 1: 测试组件
 
 ```bash
-cd /root/autodl-tmp/CultureMoE/Culture_Alignment/cultural_mediation
-python test_components.py
+python cultural_mediation/test_components.py
 ```
 
 **预期输出**：
@@ -244,31 +243,6 @@ print(country_weights)
 
 ---
 
-## 💡 提示
-
-### 调试技巧
-
-1. **打印中间结果**：
-   ```python
-   print(f"Prompt: {prompt[:200]}...")
-   print(f"Response: {response[:200]}...")
-   ```
-
-2. **保存输出到文件**：
-   ```python
-   with open("debug_output.txt", "w") as f:
-       f.write(f"Prompts: {prompts}\n")
-       f.write(f"Responses: {responses}\n")
-   ```
-
-3. **使用更小的样本测试**：
-   ```python
-   # 只测试前10个样本
-   for i in range(10):
-       sample = loader.get_sample(i)
-       # ...
-   ```
-
 ### 性能优化
 
 1. **批处理**：一次处理多个样本
@@ -276,35 +250,3 @@ print(country_weights)
 3. **缓存**：相同prompt的结果缓存
 4. **异步**：GPU0和GPU1并行工作（高级）
 
----
-
-## 📞 获取帮助
-
-如果遇到问题：
-
-1. **查看文档**：
-   - `README.md` - 完整使用指南
-   - `UPDATES.md` - 变更说明
-   - `DESIGN_SUMMARY.md` - 设计方案
-
-2. **运行测试**：
-   ```bash
-   python test_components.py
-   ```
-
-3. **检查日志**：
-   - 查看错误堆栈
-   - 打印中间变量
-   - 使用`pdb`调试
-
-4. **验证环境**：
-   ```bash
-   python -c "import torch; print(torch.cuda.is_available())"
-   python -c "import transformers; print(transformers.__version__)"
-   ```
-
----
-
-**祝实验顺利！🚀**
-
-如有问题，参考上述文档或运行测试脚本排查。
