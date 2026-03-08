@@ -109,22 +109,18 @@ def test_model_paths():
 
         print(f"✓ Loaded config from {config_path}")
 
-        # Check Cultural Agent path
-        cultural_path = config["cultural_agent"]["path"]
-        print(f"\n✓ Cultural Agent path: {cultural_path}")
-        if os.path.exists(cultural_path):
-            print(f"  ✓ Path exists")
-        else:
-            print(f"  ✗ Path NOT found!")
-            return False
+        # Check all model paths
+        all_ok = True
+        for model_name, model_cfg in config["models"].items():
+            model_path = model_cfg["path"]
+            print(f"\n✓ {model_name} path: {model_path}")
+            if os.path.exists(model_path):
+                print(f"  ✓ Path exists")
+            else:
+                print(f"  ✗ Path NOT found!")
+                all_ok = False
 
-        # Check Qwen path
-        qwen_path = config["qwen_unified"]["path"]
-        print(f"\n✓ Qwen path: {qwen_path}")
-        if os.path.exists(qwen_path):
-            print(f"  ✓ Path exists")
-        else:
-            print(f"  ✗ Path NOT found!")
+        if not all_ok:
             return False
 
         # Check NORMAD dataset

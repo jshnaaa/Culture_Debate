@@ -68,6 +68,11 @@ def main():
         default=0,
         help="Index of sample to test (default: 0)"
     )
+    parser.add_argument(
+        "--no_batch",
+        action="store_true",
+        help="Generate one agent at a time instead of batch (saves ~3-4 GB VRAM)"
+    )
     args = parser.parse_args()
 
     print("=" * 80)
@@ -155,13 +160,20 @@ Answer:"""
 
         prompts.append(prompt)
 
-    # Generate all 5 responses in batch
-    print("  Generating batch of 5 agent responses...")
-    agent_responses_raw = model_mgr.batch_generate(
-        prompts,
-        max_new_tokens=200,
-        temperature=0.0
-    )
+    # Generate responses: batch (faster) or sequential (lower VRAM)
+    if args.no_batch:
+        print("  Generating 5 agent responses sequentially (low VRAM mode)...")
+        agent_responses_raw = [
+            model_mgr.generate(p, max_new_tokens=200, temperature=0.0)
+            for p in prompts
+        ]
+    else:
+        print("  Generating batch of 5 agent responses...")
+        agent_responses_raw = model_mgr.batch_generate(
+            prompts,
+            max_new_tokens=200,
+            temperature=0.0
+        )
 
     # Parse answers
     agent_responses = []
