@@ -102,6 +102,7 @@ def test_model_paths():
     try:
         import json
         import os
+        import subprocess
 
         config_path = Path(__file__).parent / "config" / "model_paths.json"
         with open(config_path, 'r') as f:
@@ -113,19 +114,25 @@ def test_model_paths():
         all_ok = True
         for model_name, model_cfg in config["models"].items():
             model_path = model_cfg["path"]
-            print(f"\n✓ {model_name} path: {model_path}")
+            print(f"\n  [{model_name}] {model_path}")
             if os.path.exists(model_path):
                 print(f"  ✓ Path exists")
             else:
                 print(f"  ✗ Path NOT found!")
+                # Try to auto-detect a likely path
+                hint = _find_model_hint(model_name)
+                if hint:
+                    print(f"  💡 Possible location: {hint}")
+                    print(f"     Update config/model_paths.json if correct.")
                 all_ok = False
 
         if not all_ok:
+            print("\n  ⚠️  Fix model paths in config/model_paths.json and re-run.")
             return False
 
         # Check NORMAD dataset
         normad_path = config["_data_paths"]["normad_dataset"]
-        print(f"\n✓ NORMAD dataset path: {normad_path}")
+        print(f"\n  [normad] {normad_path}")
         if os.path.exists(normad_path):
             print(f"  ✓ Path exists")
         else:
@@ -139,6 +146,30 @@ def test_model_paths():
         import traceback
         traceback.print_exc()
         return False
+
+
+def _find_model_hint(model_name: str) -> str:
+    """Try to find a plausible model path by searching the filesystem"""
+    import subprocess
+    keywords = {
+        "llama": ["Llama", "llama", "LLAMA"],
+        "qwen":  ["Qwen", "qwen", "QWEN"],
+    }
+    search_terms = keywords.get(model_name.lower(), [model_name])
+
+    for term in search_terms:
+        try:
+            result = subprocess.run(
+                ["find", "/root", "-maxdepth", "6", "-type", "d",
+                 "-iname", f"*{term}*"],
+                capture_output=True, text=True, timeout=5
+            )
+            lines = [l.strip() for l in result.stdout.splitlines() if l.strip()]
+            if lines:
+                return lines[0]
+        except Exception:
+            pass
+    return ""
 
 
 def test_unified_model_manager():

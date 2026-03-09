@@ -8,6 +8,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from typing import List, Optional
 import json
 from pathlib import Path
+import os
 
 
 class UnifiedModelManager:
@@ -54,9 +55,18 @@ class UnifiedModelManager:
         print(f"Device: {self.device}")
         print("=" * 80)
 
-        # Load tokenizer
+        # Verify path exists before attempting to load
+        if not Path(self.model_path).exists():
+            raise FileNotFoundError(
+                f"\n✗ Model path not found: {self.model_path}\n"
+                f"  Please update config/model_paths.json with the correct path.\n"
+                f"  You can find your models with: find /root -name 'config.json' -path '*/llama*' 2>/dev/null"
+            )
+
+        # Load tokenizer (local_files_only prevents HF Hub lookup for local paths)
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.model_path,
+            local_files_only=True,
             trust_remote_code=True
         )
 
@@ -65,6 +75,7 @@ class UnifiedModelManager:
             self.model_path,
             torch_dtype=torch.bfloat16,
             device_map=self.device,
+            local_files_only=True,
             trust_remote_code=True
         )
 

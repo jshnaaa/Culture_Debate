@@ -24,6 +24,9 @@
 #   --no_batch mode : ~17 GB     (1 prompt at a time)
 ################################################################################
 
+# Fix OMP_NUM_THREADS warning from libgomp
+export OMP_NUM_THREADS=4
+
 # Default values
 MODEL=${1:-llama}
 SAMPLE_IDX=${2:-0}

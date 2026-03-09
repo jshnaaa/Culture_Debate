@@ -16,7 +16,9 @@ class NORMADSample:
         self.raw_data = raw_data
         self.instruction = raw_data.get("instruction", "")
         self.output = raw_data.get("output", "")
-        self.country = raw_data.get("country", "").lower()
+
+        # Try multiple possible key names for country (case-insensitive)
+        self.country = self._extract_country(raw_data)
 
         # Parse instruction to extract components
         self.background = self._extract_background()
@@ -25,6 +27,25 @@ class NORMADSample:
 
         # Gold label is output directly (1/2/3)
         self.gold_label = self.output
+
+    def _extract_country(self, raw_data: Dict) -> str:
+        """Extract country from raw data, trying multiple key names as fallback"""
+        # Try common key name variants
+        for key in ("country", "Country", "COUNTRY", "nation", "Nation"):
+            val = raw_data.get(key, "")
+            if val:
+                return val.lower().strip()
+
+        # Fallback: extract from instruction text
+        # e.g. "This question is for a country or language that is egypt."
+        match = re.search(
+            r'(?:country or language that is|country:\s*)([a-zA-Z _\-]+)',
+            self.instruction, re.IGNORECASE
+        )
+        if match:
+            return match.group(1).strip().lower().rstrip('.')
+
+        return ""
 
     def _extract_background(self) -> str:
         """Extract Background section from instruction"""
