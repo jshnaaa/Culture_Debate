@@ -4,13 +4,13 @@
 
   "models": {
     "llama": {
-      "path": "/root/autodl-tmp/CultureMoE/Culture_Alignment/Meta-Llama-3.1-8B-Instruct",
+      "path": "/root/autodl-tmp/CultureDebate/Culture_Alignment/Meta-Llama-3.1-8B-Instruct",
       "name": "Llama 3.1 8B Instruct",
       "vram": "~16GB (bfloat16)",
       "device": "cuda:0"
     },
     "qwen": {
-      "path": "/root/autodl-tmp/CultureMoE/Culture_Alignment/Meta-Qwen-3-8B-Instruct",
+      "path": "/root/autodl-tmp/CultureDebate/Culture_Alignment/Meta-Qwen-3-8B-Instruct",
       "name": "Qwen 3 8B Instruct",
       "vram": "~16GB (bfloat16)",
       "device": "cuda:0"
