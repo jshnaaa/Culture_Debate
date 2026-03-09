@@ -6,4 +6,4 @@ source /etc/network_turbo
 git pull
 
 # 强制切换到远程分支（会进入 detached HEAD 状态）
-git checkout origin/master -f
+git checkout origin/main -f
